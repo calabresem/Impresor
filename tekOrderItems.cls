@@ -16,7 +16,7 @@ Option Explicit
 'local variable to hold collection
 Private mCol As Collection
 
-Public Function Add(ItemId As Integer, Descripcion As String, Cantidad As Integer, Precio As Double, IVA As Double, ImpInt As Double, Despacho As String) As tekOrderItem
+Public Function Add(ItemId As Integer, Descripcion As String, Cantidad As Integer, Precio As Double, IVA As Double, ImpInt As Double, Despacho As String, Desc As Double) As tekOrderItem
     'create a new object
     Dim objNewMember As tekOrderItem
     Set objNewMember = New tekOrderItem
@@ -29,6 +29,7 @@ Public Function Add(ItemId As Integer, Descripcion As String, Cantidad As Intege
     objNewMember.IVA = IVA
     objNewMember.ImpInt = ImpInt
     objNewMember.NroDespacho = Despacho
+    objNewMember.Desc = Desc
     
     mCol.Add objNewMember, CStr(objNewMember.ItemId)
     'return the object created

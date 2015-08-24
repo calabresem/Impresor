@@ -18,6 +18,7 @@ Private sDescripcion As String
 Private iCantidad As Integer
 Private dPrecio As Double
 Private dIVA As Double
+Private dDesc As Double
 Private dImpInt As Double
 Private sNroDespacho As String
 
@@ -85,3 +86,11 @@ Public Property Let NroDespacho(ByVal NewValue As String)
    sNroDespacho = NewValue
 End Property
 
+' ----------------- % de Descuento
+Public Property Get Desc() As Double
+   Desc = dDesc
+End Property
+
+Public Property Let Desc(ByVal NewValue As Double)
+   dDesc = NewValue
+End Property

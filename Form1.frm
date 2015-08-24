@@ -1,19 +1,19 @@
 VERSION 5.00
 Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "MSWINSCK.OCX"
-Object = "{9C5C9460-5789-11DA-8CFB-0000E856BC17}#1.0#0"; "Fiscal051122.Ocx"
+Object = "{39ABE45D-F077-4D34-A361-6906C77D67F7}#1.0#0"; "Fiscal150423.Ocx"
 Begin VB.Form frmMain 
    BorderStyle     =   1  'Fixed Single
    Caption         =   "Facturador"
-   ClientHeight    =   2100
+   ClientHeight    =   2055
    ClientLeft      =   2985
    ClientTop       =   3360
-   ClientWidth     =   4590
+   ClientWidth     =   4620
    Icon            =   "Form1.frx":0000
    LinkTopic       =   "Form1"
    MaxButton       =   0   'False
    MinButton       =   0   'False
-   ScaleHeight     =   2100
-   ScaleWidth      =   4590
+   ScaleHeight     =   2055
+   ScaleWidth      =   4620
    Begin MSWinsockLib.Winsock Winsock 
       Left            =   2760
       Top             =   2760
@@ -44,9 +44,9 @@ Begin VB.Form frmMain
       Top             =   2760
    End
    Begin FiscalPrinterLibCtl.HASAR HASAR1 
-      Left            =   360
+      Left            =   480
       OleObjectBlob   =   "Form1.frx":1242
-      Top             =   2400
+      Top             =   2280
    End
    Begin VB.Menu mnuForm 
       Caption         =   "Menu"
@@ -140,12 +140,12 @@ Private Sub ImprimirTickets(ByRef oTekBiz As clsTekBiz)
 'HASAR1.DescuentoGeneral "Oferta Pago Efectivo", 25, True
 'HASAR1.EspecificarPercepcionPorIVA "Percep IVA21", 100, 21
 'HASAR1.EspecificarPercepcionGlobal "Percep. RG 0000", 125#
-    
-    
+
+
 Dim x As Integer, Y As Integer
 Dim sComando As String, sRazonSocial As String, sDomicilio As String, sCUIT As String
 Dim sEmisorFMT As String, sNumeroFMT As String
-Dim cTotal As Double
+Dim cTotDesc As Double
       
     ' hay algo para imprimir? (se supone que si, pero...)
     If oTekBiz.Orders.Count = 0 Then
@@ -164,7 +164,7 @@ Procesar:
         ' -----------------
         sEmisorFMT = Format(oTekBiz.Orders.Item(x).Emisor, "0000")
         sNumeroFMT = Format(oTekBiz.Orders.Item(x).Numero, "00000000")
-        
+        cTotDesc = 0
         
         ' ----------------- seleccionar tipo de comprobante
         Select Case oTekBiz.Orders.Item(x).TipoCpte
@@ -180,63 +180,55 @@ Procesar:
                 
                 ' completamos con espacios
                 sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
-                sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
+                'sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
+                sDomicilio = String((40 - Len("")), " ")
                 
-                ' enviamos el comando
-                sComando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & oTekBiz.Orders.Item(x).CondIVA & FS & "C" & _
-                          FS & sDomicilio
-                
-
-'------------------ PRUEBA
-'                sComando = Chr$(98) & FS & "Cliente..." & FS & "99999999995" & FS & "I" & FS & "C" & _
-'                            FS & "Domicilio..."
-'------------------
-
                 If bDevMode = False Then
-                    HASAR1.Enviar sComando
-                    HASAR1.AbrirComprobanteFiscal FACTURA_A
+                    HASAR1.DatosCliente sRazonSocial, sCUIT, TIPO_CUIT, RESPONSABLE_INSCRIPTO, sDomicilio
+                    HASAR1.AbrirComprobanteFiscal TICKET_FACTURA_A
+                    
                 Else
-                    Debug.Print "Imprime la cabecera."
+                    Debug.Print "Razon social: " & sRazonSocial & " - CUIT: " & sCUIT & " - Domicilio: " & sDomicilio
+                    
                 End If
                 
                 
-'------------------ IMPRIME ITEMS
+                '------------------ IMPRIME ITEMS
                 For Y = 1 To oTekBiz.Orders.Item(x).OrderItems.Count
-            
+           
                     ' imprimimos el detalle del ticket
-                    If Len(oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho) = 0 Then
-                        oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho = GenerateDutyNumber
-                    End If
-                    
-                    
                     If bDevMode = False Then
-                        HASAR1.ImprimirTextoFiscal oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho
                         HASAR1.ImprimirItem oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, oTekBiz.Orders.Item(x).OrderItems.Item(Y).IVA, oTekBiz.Orders.Item(x).OrderItems.Item(Y).ImpInt
+                        
+                        If oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc <> 0 Then
+                            cTotDesc = cTotDesc + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc
+                        End If
+
                     Else
                         Debug.Print "Imprime el detalle."
                     End If
-                    
-                    
-                    ' calculamos el total para mostrar el pago
-                    cTotal = Round(cTotal + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad * oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, 2)
-        
+     
                 Next Y
 
+
+                ' Imprime el descuento
+                If cTotDesc <> 0 Then
+                    HASAR1.DescuentoGeneral "Descuento", cTotDesc, True
+                End If
                 
-                ' si se ingreso el pago en efectivo, se muestra eso
+                
+                '------------------ IMPRIME PAGO
                 If bDevMode = False Then
-                    If oTekBiz.Orders.Item(x).PagoEfectivo = 0 Then
-                        HASAR1.ImprimirPago "Efectivo", cTotal
-                    Else
+                    If oTekBiz.Orders.Item(x).PagoEfectivo <> 0 Then
                         HASAR1.ImprimirPago "Efectivo", oTekBiz.Orders.Item(x).PagoEfectivo
                     End If
 
                     ' cierra el comprobante
-                    'HASAR1.CerrarComprobanteFiscal
-                    HASAR1.Enviar (Chr(69))
+                    HASAR1.CerrarComprobanteFiscal
 
                 Else
-                    Debug.Print "Imprime pago y cierre."
+                    Debug.Print "Pago:  " & CStr(oTekBiz.Orders.Item(x).PagoEfectivo)
+                    
                 End If
                 
 
@@ -245,143 +237,75 @@ Procesar:
             Case Ticket
             Case FacturaB
 
-                '// Se reemplaza DatosCliente() por Enviar()
-                '// Se agregó en este comando el campo de domicilio
-                '// -----------------------------------------------
-                'comando = Chr$(98) & FS & "Cliente..." & FS & "9999" & FS & "C" & FS & "0" & _
-                          FS & "Domicilio..."
-
-                'sComando = Chr$(98) & FS & oTekBiz.Orders.Item(x).RazonSocial & FS & oTekBiz.Orders.Item(x).CUIT & FS & oTekBiz.Orders.Item(x).CondIVA & FS & "0" & _
-                          FS & Left(oTekBiz.Orders.Item(x).Direccion, 40)
-
-                comando = Chr$(98) & FS & "" & FS & "" & FS & "" & FS & "" & _
-                          FS & ""
-
-
-                If bDevMode = False Then
-                    HASAR1.Enviar comando
-                    HASAR1.AbrirComprobanteFiscal FACTURA_B
+               
+               If bDevMode = False Then
+                    HASAR1.DatosCliente "CONSUMIDOR FINAL", "00000000", TIPO_DNI, CONSUMIDOR_FINAL, "."
+                    HASAR1.AbrirComprobanteFiscal TICKET_FACTURA_B
                 Else
                     Debug.Print "Abre comprobante: TICKET FACTURA B"
                 End If
 
 
+                '------------------ IMPRIME ITEMS
                 For Y = 1 To oTekBiz.Orders.Item(x).OrderItems.Count
 
-                    ' imprimimos el detalle del ticket
-                    If Len(oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho) = 0 Then
-                        oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho = GenerateDutyNumber
-                    End If
-
-
                     If bDevMode = False Then
-                        HASAR1.ImprimirTextoFiscal oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho
                         HASAR1.ImprimirItem oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, oTekBiz.Orders.Item(x).OrderItems.Item(Y).IVA, oTekBiz.Orders.Item(x).OrderItems.Item(Y).ImpInt
+
+                        If oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc <> 0 Then
+                            cTotDesc = cTotDesc + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc
+                        End If
+                        
                     Else
                         Debug.Print "Imprime el detalle"
                     End If
 
-
-                    ' calculamos el total para mostrar el pago
-                    cTotal = Round(cTotal + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad * oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, 2)
-
                 Next Y
 
+                
+                ' Imprime el descuento
+                If cTotDesc <> 0 Then
+                    HASAR1.DescuentoGeneral "Descuento", cTotDesc, True
+                End If
 
-                ' si se ingreso el pago en efectivo, se muestra eso
+                
+                '------------------ IMPRIME ITEMS
                 If bDevMode = False Then
-                    If oTekBiz.Orders.Item(x).PagoEfectivo = 0 Then
-                        HASAR1.ImprimirPago "Efectivo", cTotal
-                    Else
+                    If oTekBiz.Orders.Item(x).PagoEfectivo <> 0 Then
                         HASAR1.ImprimirPago "Efectivo", oTekBiz.Orders.Item(x).PagoEfectivo
                     End If
 
                     ' cierra comprobante
-                    'HASAR1.CerrarComprobanteFiscal
-                    HASAR1.Enviar (Chr(69))
+                    HASAR1.CerrarComprobanteFiscal
 
                 Else
                     Debug.Print "Imprime el pago y cierre"
                 End If
-                
 
-            ' ------------------------------ TICKET
-'            Case Ticket
-'            Case FacturaB
-'
-'                ' abrimos el ticket
-'                If bDevMode = False Then
-'                    HASAR1.AbrirComprobanteFiscal TICKET_C
-'                Else
-'                    Debug.Print "Imprime la cabecera: TICKET"
-'                End If
-'
-'
-'                For Y = 1 To oTekBiz.Orders.Item(x).OrderItems.Count
-'
-'                    ' imprimimos el detalle del ticket
-'                    If Len(oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho) = 0 Then
-'                        oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho = GenerateDutyNumber
-'                    End If
-'
-'                    If bDevMode = False Then
-'                        HASAR1.ImprimirTextoFiscal oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho
-'                        HASAR1.ImprimirItem oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, oTekBiz.Orders.Item(x).OrderItems.Item(Y).IVA, oTekBiz.Orders.Item(x).OrderItems.Item(Y).ImpInt
-'                    Else
-'                        Debug.Print "Imprime detalle: " & oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion
-'                    End If
-'
-'                    ' calculamos el total para mostrar el pago
-'                    cTotal = Round(cTotal + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad * oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, 2)
-'
-'                Next Y
-'
-'
-'                ' si se ingreso el pago en efectivo, se muestra eso
-'                If bDevMode = False Then
-'                    If oTekBiz.Orders.Item(x).PagoEfectivo = 0 Then
-'                        HASAR1.ImprimirPago "Efectivo", cTotal
-'                    Else
-'                        HASAR1.ImprimirPago "Efectivo", oTekBiz.Orders.Item(x).PagoEfectivo
-'                    End If
-'
-'                    ' cierra el comprobante
-'                    HASAR1.CerrarComprobanteFiscal
-'
-'                Else
-'                    Debug.Print "Imprime pago y cierra comprobante."
-'                End If
-                
 
 
             ' ------------------------------ NOTA CREDITO A
             Case NotaCA
 
-
                 If bDevMode = False Then
+    
+                    '// ----------------------------------------------
+                    sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
+                    sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
+                    sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
+                    sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
+                    sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
                     
-                    '// Se reemplaza InformacionRemito() por Enviar()
-                    '// Comnado no existente en P-615F
-                    '// ---------------------------------------------
-                    comando = Chr$(147) & FS & "1" & FS & sEmisorFMT & "-" & sNumeroFMT
+                    'HASAR1.InformacionRemito(1) = "0000-00000000"
+                    'HASAR1.DatosCliente sRazonSocial, sCUIT, TIPO_CUIT, RESPONSABLE_INSCRIPTO, "."
+                    'HASAR1.AbrirDNFH NOTA_CREDITO_A
+    
+                    HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    comando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & "I" & FS & "C" & _
+                              FS & "."
                     HASAR1.Enviar comando
-
-                    '// Se reemplaza DatosCliente() por Enviar()
-                    '// Se agregó el campo de domicilio en este comando
-                    '// -----------------------------------------------
-                    'sComando = Chr$(98) & FS & oTekBiz.Orders.Item(X).RazonSocial & FS & oTekBiz.Orders.Item(X).CUIT & FS & oTekBiz.Orders.Item(X).CondIVA & FS & "C" & _
-                    '          FS & Left(oTekBiz.Orders.Item(X).Direccion, 40)
-                    comando = Chr$(98) & FS & "Cliente..." & FS & "99999999995" & FS & "I" & FS & "C" & _
-                              FS & "Domicilio..."
-
-                    HASAR1.Enviar comando
-
-                    '// Se reemplaza AbrirComprobanteNoFiscalHomologado() por Enviar()
-                    '// Comando no existente en P-615F
-                    '//---------------------------------------------------------------
-                    comando = Chr$(128) & FS & "R" & FS & "T"
-                    HASAR1.Enviar comando
-
+                    HASAR1.Enviar Chr$(128) & FS & "R" & FS & "T"
+    
                 Else
                     Debug.Print "Imprime encabezado."
                 End If
@@ -389,38 +313,33 @@ Procesar:
                 
                 For Y = 1 To oTekBiz.Orders.Item(x).OrderItems.Count
             
-                    ' imprimimos el detalle del ticket
-                    If Len(oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho) = 0 Then
-                        oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho = GenerateDutyNumber
-                    End If
-                    
-                    
                     If bDevMode = False Then
-                        HASAR1.ImprimirTextoFiscal oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho
                         HASAR1.ImprimirItem oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, oTekBiz.Orders.Item(x).OrderItems.Item(Y).IVA, oTekBiz.Orders.Item(x).OrderItems.Item(Y).ImpInt
+                        
+                        If oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc <> 0 Then
+                            cTotDesc = cTotDesc + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc
+                        End If
+                        
                     Else
                         Debug.Print "Imprime detalle: " & oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion
                     End If
-                    
-
-                    ' calculamos el total para mostrar el pago
-                    cTotal = Round(cTotal + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad * oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, 2)
-            
+                                
                 Next Y
+                
+                
+                ' Imprime el descuento
+                If cTotDesc <> 0 Then
+                    HASAR1.DescuentoGeneral "Descuento", cTotDesc, True
+                End If
                 
 
                 If bDevMode = False Then
-                    ' si se ingreso el pago en efectivo, se muestra eso
-                    If oTekBiz.Orders.Item(x).PagoEfectivo = 0 Then
-                        HASAR1.ImprimirPago "Efectivo", cTotal
-                    Else
+                    If oTekBiz.Orders.Item(x).PagoEfectivo <> 0 Then
                         HASAR1.ImprimirPago "Efectivo", oTekBiz.Orders.Item(x).PagoEfectivo
                     End If
 
-                    '// Se reemplaza CerrarComprobanteNoFiscalHomologado() por Enviar()
-                    '// Comando no existente en P-615F
                     '//---------------------------------------------------------------
-                    HASAR1.Enviar Chr$(129)
+                    HASAR1.CerrarDNFH
 
                 Else
                     Debug.Print "Imprime pago y cierra."
@@ -433,70 +352,50 @@ Procesar:
 
                 If bDevMode = False Then
 
-                    '// Se reemplaza InformacionRemito() por Enviar()
-                    '// Comando no existente en P-615F
-                    '// ---------------------------------------------
-                    'comando = Chr$(147) & FS & "1" & FS & sEmisorFMT & "-" & sNumeroFMT
-                    'HASAR1.Enviar comando
-                    comando = Chr$(147) & FS & "1" & FS & "0000-0000000"
-                    HASAR1.Enviar comando
-    
-                    '// Se reemplaza DatosCliente() por Enviar()
-                    '// Se agregó el campo de domicilio al comando
-                    '// ------------------------------------------
-                    'sComando = Chr$(98) & FS & oTekBiz.Orders.Item(X).RazonSocial & FS & oTekBiz.Orders.Item(X).CUIT & FS & oTekBiz.Orders.Item(X).CondIVA & FS & "C" & _
-                    '          FS & Left(oTekBiz.Orders.Item(X).Direccion, 40)
+                    ' Metodos no soportados por el 715F
+                    'HASAR1.InformacionRemito(1) = "0000-00000000"
+                    'HASAR1.DatosCliente "CONSUMIDOR FINAL", "99999999995", TIPO_CUIT, CONSUMIDOR_FINAL, "."
+                    'HASAR1.AbrirDNFH NOTA_CREDITO_B
                     
-                    comando = Chr$(98) & FS & "Cliente..." & FS & "9999" & FS & "C" & FS & "2" & _
-                              FS & "Domicilio..."
+                    HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    comando = Chr$(98) & FS & "CONSUMIDOR FINAL" & FS & "99999999995" & FS & "C" & FS & "2" & _
+                              FS & "."
                     HASAR1.Enviar comando
-    
-                    '// Se reemplaza AbrirComprobanteNoFiscalHomologado() por Enviar()
-                    '// Comando no existente en el P-615F
-                    '//---------------------------------------------------------------
-                    comando = Chr$(128) & FS & "S" & FS & "T"
-                    HASAR1.Enviar comando
-
+                    HASAR1.Enviar Chr$(128) & FS & "S" & FS & "T"
+                    
                 Else
                     Debug.Print "Imprime encabezado."
                 End If
 
-               
 
                 For Y = 1 To oTekBiz.Orders.Item(x).OrderItems.Count
             
-                    ' imprimimos el detalle del ticket
-                    If Len(oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho) = 0 Then
-                        oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho = GenerateDutyNumber
-                    End If
-                    
-                    
                     If bDevMode = False Then
-                        HASAR1.ImprimirTextoFiscal oTekBiz.Orders.Item(x).OrderItems.Item(Y).NroDespacho
                         HASAR1.ImprimirItem oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad, oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, oTekBiz.Orders.Item(x).OrderItems.Item(Y).IVA, oTekBiz.Orders.Item(x).OrderItems.Item(Y).ImpInt
+
+                        If oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc <> 0 Then
+                            cTotDesc = cTotDesc + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Desc
+                        End If
+
                     Else
                         Debug.Print "Imprime detalle."
                     End If
                     
-                    
-                    ' calculamos el total para mostrar el pago
-                    cTotal = Round(cTotal + oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad * oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio, 2)
-
                 Next Y
+                
+                ' Imprime el descuento
+                If cTotDesc <> 0 Then
+                    HASAR1.DescuentoGeneral "Descuento", cTotDesc, True
+                End If
                 
 
                 If bDevMode = False Then
-                    ' si se ingreso el pago en efectivo, se muestra eso
-                    If oTekBiz.Orders.Item(x).PagoEfectivo = 0 Then
-                        HASAR1.ImprimirPago "Efectivo", cTotal
-                    Else
+                    If oTekBiz.Orders.Item(x).PagoEfectivo <> 0 Then
                         HASAR1.ImprimirPago "Efectivo", oTekBiz.Orders.Item(x).PagoEfectivo
                     End If
                 
-                    '// Se reemplaza CerrarComprobanteNoFiscalHomologado() por Enviar()
-                    '// Comando no existente en P-615F
                     '//---------------------------------------------------------------
-                    HASAR1.Enviar Chr$(129)
+                    HASAR1.CerrarDNFH
 
                 Else
                     Debug.Print "Imprime detalle."
@@ -812,7 +711,8 @@ Procesar:
     If bDevMode = False Then
         ' inicializa control
         HASAR1.Puerto = ReadINI("Impresor", "puerto", "config.ini")
-        HASAR1.Modelo = MODELO_P1120    '//Este OCX no es 100% para 715F
+        HASAR1.AutodetectarModelo
+        HASAR1.AutodetectarControlador
         HASAR1.Comenzar
         HASAR1.PrecioBase = False
         HASAR1.TratarDeCancelarTodo

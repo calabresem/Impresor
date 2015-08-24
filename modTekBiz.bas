@@ -21,7 +21,7 @@ Public bDevMode As Boolean
 Public sPrinterPort As String
 
 Public LogToFile As Boolean
-Public Const sSystem As String = "Facturador"
+Public Const sSystem As String = "Impresor TekarBiz v2"
 Public Const FacturaB As String = "FCB"
 Public Const FacturaA As String = "FCA"
 Public Const NotaCA As String = "NCA"
@@ -117,7 +117,7 @@ Function sBase64Enc(sText As String)
     sBase64Enc = EncodeBase64(StrConv(sText, vbFromUnicode))
 End Function
 
-    
+
 ' return the text contained in an INI file key
 Public Function ReadINI(strSection As String, strKeyName As String, _
         ByVal strFileName As String, Optional lStringBuffer As Long = 255, _
@@ -128,7 +128,7 @@ Public Function ReadINI(strSection As String, strKeyName As String, _
 ' Every exceeding char will be TRIMMED out. If you think this
 ' could cut off a part of the retrieved data, you can increase
 ' the argument in the Space() function.
-    
+
     Dim intLen As Long
     Dim strText As String, strIniFile As String
     ' set INI file default directory

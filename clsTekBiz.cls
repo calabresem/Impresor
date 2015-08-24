@@ -165,7 +165,7 @@ Dim oOrder As tekOrder, oItem As tekOrderItem
             For j = 0 To oItemsNode.Length - 1
             
                 ' y los agregamos
-                Set oItem = oOrders.Item(oOrders.Count).OrderItems.Add(CInt(oItemsNode.Item(j).selectSingleNode("@id").Text), oItemsNode.Item(j).selectSingleNode("description").Text, CInt(oItemsNode.Item(j).selectSingleNode("@quantity").Text), CDbl(oItemsNode.Item(j).selectSingleNode("@price").Text), CDbl(oItemsNode.Item(j).selectSingleNode("@tax").Text), 0, "")
+                Set oItem = oOrders.Item(oOrders.Count).OrderItems.Add(j + 1, oItemsNode.Item(j).selectSingleNode("description").Text, CInt(oItemsNode.Item(j).selectSingleNode("@quantity").Text), CDbl(oItemsNode.Item(j).selectSingleNode("@price").Text), CDbl(oItemsNode.Item(j).selectSingleNode("@tax").Text), 0, "", CDbl(oItemsNode.Item(j).selectSingleNode("@discount").Text))
             
             Next j
 
@@ -269,5 +269,4 @@ Private Sub Class_Terminate()
     Set oOrders = Nothing
 '    Set oAPI = Nothing
 End Sub
-
 
