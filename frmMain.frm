@@ -4,16 +4,16 @@ Object = "{39ABE45D-F077-4D34-A361-6906C77D67F7}#1.0#0"; "Fiscal150423.Ocx"
 Begin VB.Form frmMain 
    BorderStyle     =   1  'Fixed Single
    Caption         =   "Facturador"
-   ClientHeight    =   2055
+   ClientHeight    =   2115
    ClientLeft      =   2985
    ClientTop       =   3360
-   ClientWidth     =   4620
-   Icon            =   "Form1.frx":0000
+   ClientWidth     =   4830
+   Icon            =   "frmMain.frx":0000
    LinkTopic       =   "Form1"
    MaxButton       =   0   'False
    MinButton       =   0   'False
-   ScaleHeight     =   2055
-   ScaleWidth      =   4620
+   ScaleHeight     =   2115
+   ScaleWidth      =   4830
    Begin MSWinsockLib.Winsock Winsock 
       Left            =   2760
       Top             =   2760
@@ -44,9 +44,9 @@ Begin VB.Form frmMain
       Top             =   2760
    End
    Begin FiscalPrinterLibCtl.HASAR HASAR1 
-      Left            =   480
-      OleObjectBlob   =   "Form1.frx":1242
-      Top             =   2280
+      Left            =   960
+      OleObjectBlob   =   "frmMain.frx":1242
+      Top             =   2880
    End
    Begin VB.Menu mnuForm 
       Caption         =   "Menu"
@@ -132,24 +132,17 @@ Private Sub Form_Unload(Cancel As Integer)
 
 End Sub
 
-Private Sub ImprimirTickets(ByRef oTekBiz As clsTekBiz)
-    
-'----------------------------------
-' Codigos para items generales
-'HASAR1.DescuentoUltimoItem "Oferta del Dia", 5, True
-'HASAR1.DescuentoGeneral "Oferta Pago Efectivo", 25, True
-'HASAR1.EspecificarPercepcionPorIVA "Percep IVA21", 100, 21
-'HASAR1.EspecificarPercepcionGlobal "Percep. RG 0000", 125#
-
+Private Function ImprimirTickets(ByRef oTekBiz As clsTekBiz)
 
 Dim x As Integer, Y As Integer
 Dim sComando As String, sRazonSocial As String, sDomicilio As String, sCUIT As String
+Dim iTipoDoc As TiposDeDocumento
 Dim sEmisorFMT As String, sNumeroFMT As String
 Dim cTotDesc As Double
       
     ' hay algo para imprimir? (se supone que si, pero...)
     If oTekBiz.Orders.Count = 0 Then
-        Exit Sub
+        Exit Function
     End If
 
 
@@ -173,15 +166,17 @@ Procesar:
             Case FacturaA
 
                 '// ----------------------------------------------
-                sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
-                sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
+                'sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
+                sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
+                'sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
+                sDomicilio = oTekBiz.Orders.Item(x).Direccion
                 ' le sacamos los guiones al CUIT
                 sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
                 
                 ' completamos con espacios
-                sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
+                'sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
                 'sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
-                sDomicilio = String((40 - Len("")), " ")
+                'sDomicilio = String((40 - Len("")), " ")
                 
                 If bDevMode = False Then
                     HASAR1.DatosCliente sRazonSocial, sCUIT, TIPO_CUIT, RESPONSABLE_INSCRIPTO, sDomicilio
@@ -205,7 +200,8 @@ Procesar:
                         End If
 
                     Else
-                        Debug.Print "Imprime el detalle."
+                        Debug.Print "Imprime el detalle: " & oTekBiz.Orders.Item(x).OrderItems.Item(Y).Descripcion & _
+                        " - " & CStr(oTekBiz.Orders.Item(x).OrderItems.Item(Y).Cantidad) & " x " & CStr(oTekBiz.Orders.Item(x).OrderItems.Item(Y).Precio)
                     End If
      
                 Next Y
@@ -225,6 +221,9 @@ Procesar:
 
                     ' cierra el comprobante
                     HASAR1.CerrarComprobanteFiscal
+                    
+                    ' Le da el numero que le dio la impresora
+                    oTekBiz.Orders.Item(x).Numero = HASAR1.UltimoDocumentoFiscalA
 
                 Else
                     Debug.Print "Pago:  " & CStr(oTekBiz.Orders.Item(x).PagoEfectivo)
@@ -233,13 +232,36 @@ Procesar:
                 
 
 
-            ' ------------------------------ TICKET FACTURA B
+            ' ------------------------------ TICKET FACTURA B/C
             Case Ticket
             Case FacturaB
 
-               
+                'sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
+                sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
+                If Len(sRazonSocial) = 0 Then
+                    sRazonSocial = "CONSUMIDOR FINAL"
+                End If
+                
+                sRazonSocial = Left(sRazonSocial, 40)
+                'sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
+                'sDomicilio = oTekBiz.Orders.Item(x).Direccion
+                ' le sacamos los guiones al CUIT
+                sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
+                iTipoDoc = TIPO_CUIT
+                
+                If sCUIT = "" Or (sCUIT <> "" And Len(sCUIT) <> 11) Then
+                    sCUIT = "00000000"
+                    iTipoDoc = TIPO_DNI
+                End If
+                
+                ' completamos con espacios
+                'sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
+                'sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
+                'sDomicilio = String((40 - Len("")), " ")
+
+
                If bDevMode = False Then
-                    HASAR1.DatosCliente "CONSUMIDOR FINAL", "00000000", TIPO_DNI, CONSUMIDOR_FINAL, "."
+                    HASAR1.DatosCliente sRazonSocial, sCUIT, iTipoDoc, CONSUMIDOR_FINAL, "."
                     HASAR1.AbrirComprobanteFiscal TICKET_FACTURA_B
                 Else
                     Debug.Print "Abre comprobante: TICKET FACTURA B"
@@ -277,6 +299,9 @@ Procesar:
 
                     ' cierra comprobante
                     HASAR1.CerrarComprobanteFiscal
+                    
+                    ' Le da el numero que le dio la impresora
+                    oTekBiz.Orders.Item(x).Numero = HASAR1.UltimoDocumentoFiscalBC
 
                 Else
                     Debug.Print "Imprime el pago y cierre"
@@ -300,7 +325,8 @@ Procesar:
                     'HASAR1.DatosCliente sRazonSocial, sCUIT, TIPO_CUIT, RESPONSABLE_INSCRIPTO, "."
                     'HASAR1.AbrirDNFH NOTA_CREDITO_A
     
-                    HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    'HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    HASAR1.Enviar Chr$(147) & FS & "1" & FS & oTekBiz.Orders.Item(x).CpteRel
                     comando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & "I" & FS & "C" & _
                               FS & "."
                     HASAR1.Enviar comando
@@ -340,25 +366,49 @@ Procesar:
 
                     '//---------------------------------------------------------------
                     HASAR1.CerrarDNFH
-
+                    
+                    ' Le da el numero que le dio la impresora
+                    oTekBiz.Orders.Item(x).Numero = HASAR1.UltimaNotaCreditoA
+                    
                 Else
                     Debug.Print "Imprime pago y cierra."
                 End If
 
 
 
-            ' ------------------------------ NOTA CREDITO B
+            ' ------------------------------ NOTA CREDITO B/C
             Case NotaCB
 
                 If bDevMode = False Then
+
+                    'sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
+                    sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
+                    If Len(sRazonSocial) = 0 Then
+                        sRazonSocial = "CONSUMIDOR FINAL"
+                    End If
+                    
+                    'sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
+                    sDomicilio = oTekBiz.Orders.Item(x).Direccion
+                    ' le sacamos los guiones al CUIT
+                    sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
+                    If sCUIT = "" Or Len(sCUIT) <> 11 Then
+                        sCUIT = "99999999995"
+                    End If
+                    
+                    ' completamos con espacios
+                    sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
+                    'sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
+                    sDomicilio = String((40 - Len("")), " ")
+
 
                     ' Metodos no soportados por el 715F
                     'HASAR1.InformacionRemito(1) = "0000-00000000"
                     'HASAR1.DatosCliente "CONSUMIDOR FINAL", "99999999995", TIPO_CUIT, CONSUMIDOR_FINAL, "."
                     'HASAR1.AbrirDNFH NOTA_CREDITO_B
                     
-                    HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
-                    comando = Chr$(98) & FS & "CONSUMIDOR FINAL" & FS & "99999999995" & FS & "C" & FS & "2" & _
+                    'HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    HASAR1.Enviar Chr$(147) & FS & "1" & FS & oTekBiz.Orders.Item(x).CpteRel
+                    comando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & "C" & FS & "2" & _
                               FS & "."
                     HASAR1.Enviar comando
                     HASAR1.Enviar Chr$(128) & FS & "S" & FS & "T"
@@ -397,6 +447,9 @@ Procesar:
                     '//---------------------------------------------------------------
                     HASAR1.CerrarDNFH
 
+                    ' Le da el numero que le dio la impresora
+                    oTekBiz.Orders.Item(x).Numero = HASAR1.UltimaNotaCreditoBC
+
                 Else
                     Debug.Print "Imprime detalle."
                 End If
@@ -415,7 +468,7 @@ Procesar:
     ' puntero
     Screen.MousePointer = vbNormal
 
-    Exit Sub
+    Exit Function
 
 impresora_apag:
 
@@ -424,7 +477,7 @@ impresora_apag:
         Resume Procesar
     End If
 
-End Sub
+End Function
 
 Private Sub mnuSysCancelAll_Click()
 
@@ -558,7 +611,7 @@ End Function
 ' --------------------------------------------------------------------------
 '
 ' --------------------------------------------------------------------------
-Private Function manageOrders(ByVal sData As String) As Boolean
+Private Function manageOrders(ByVal sData As String) As String
 
 Dim iOrderCnt As Integer
 
@@ -609,6 +662,13 @@ cmd_GetPending:
             ImprimirTickets oTekBiz
             
             
+            manageOrders = oTekBiz.GetPrintedOrdersXML()
+            
+            If bDevMode = True Then
+                Debug.Print manageOrders
+            End If
+            
+            
 'cmd_SetPrinted:
 '
 '            ' marca las ordenes que procesamos como "emitidas"
@@ -650,8 +710,6 @@ cmd_GetPending:
         
     End If
 
-
-    manageOrders = True
 
 DeadEnd:
 
@@ -927,22 +985,34 @@ End Sub
 
 Private Sub Winsock_DataArrival(ByVal bytesTotal As Long)
     Dim sData As String
+    Dim sResponse As String
 
     Winsock.GetData sData
+    DoEvents
     
+    ' Imprime comprobantes
     If Winsock.State = sckConnected Then
         If bDevMode = True Then
             Debug.Print sData
         End If
-        Winsock.SendData "OK"
 
         ' imprime
-        If manageOrders(sData) = False Then
-            MsgBox "Error"
-        End If
-
+        sResponse = manageOrders(sData)
 
     End If
+    
+    ' Envia respuesta
+    If Winsock.State = sckConnected Then
+        If Len(sResponse) = 0 Then
+            MsgBox "Error"
+            Winsock.SendData "ERROR"
+        Else
+            Winsock.SendData sResponse
+        End If
+    End If
+    
+    
+    DoEvents
     
     Winsock_Close
 
@@ -952,4 +1022,10 @@ Public Sub MuestraEstado(ByVal texto As String)
 
     txtStatus.Text = texto & " | " & Time()
 
+End Sub
+
+Private Sub Winsock_SendComplete()
+    
+    Debug.Print "Listo"
+    
 End Sub

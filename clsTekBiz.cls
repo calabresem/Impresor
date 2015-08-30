@@ -157,7 +157,7 @@ Dim oOrder As tekOrder, oItem As tekOrderItem
         For i = 0 To (x - 1)
 
             ' agregamos la orden
-            Set oOrder = oOrders.Add(CLng(oOrdersNode.Item(i).selectSingleNode("@id").Text), oOrdersNode.Item(i).selectSingleNode("@type").Text, CInt(oOrdersNode.Item(i).selectSingleNode("@source").Text), CInt(oOrdersNode.Item(i).selectSingleNode("@number").Text), oOrdersNode.Item(i).selectSingleNode("customer/name").Text, oOrdersNode.Item(i).selectSingleNode("customer/@tax_id").Text, oOrdersNode.Item(i).selectSingleNode("customer/address").Text, oOrdersNode.Item(i).selectSingleNode("@date").Text, oOrdersNode.Item(i).selectSingleNode("customer/@tax_type").Text, CDbl(oOrdersNode.Item(i).selectSingleNode("payment").Text), False)
+            Set oOrder = oOrders.Add(CLng(oOrdersNode.Item(i).selectSingleNode("@id").Text), oOrdersNode.Item(i).selectSingleNode("@type").Text, CInt(oOrdersNode.Item(i).selectSingleNode("@source").Text), CLng(oOrdersNode.Item(i).selectSingleNode("@number").Text), oOrdersNode.Item(i).selectSingleNode("customer/name").Text, oOrdersNode.Item(i).selectSingleNode("customer/@tax_id").Text, CStr(oOrdersNode.Item(i).selectSingleNode("@rel_number").Text), oOrdersNode.Item(i).selectSingleNode("customer/address").Text, oOrdersNode.Item(i).selectSingleNode("@date").Text, oOrdersNode.Item(i).selectSingleNode("customer/@tax_type").Text, CDbl(oOrdersNode.Item(i).selectSingleNode("payment").Text), False)
 
             ' seleccionamos los items de la orden
             Set oItemsNode = oOrdersNode.Item(i).selectNodes("items/item")
@@ -220,20 +220,8 @@ Public Function SetPrintedOrders() As Boolean
     
     'On Error GoTo ErrHandler
 
-    
-    If oOrders.Count > 0 Then
-
-        sXML = "<set_printed_invoices>"
-
-        For i = 1 To oOrders.Count
-        
-            sXML = sXML & "<invoice id=""" & oOrders.Item(i).ID & """ />"
-       
-        Next i
-    
-        sXML = sXML & "</set_printed_invoices>"
-    
-    End If
+    ' Pide el XML de las ordenes impresas
+    sXML = GetPrintedOrdersXML()
     
     
     ' llamamos al web service
@@ -265,8 +253,35 @@ ErrHandler:
 
 End Function
 
+
+' ------------------------------------------------
+' esta funcion recorre las ordenes cargadas y las marca como impresas
+Public Function GetPrintedOrdersXML() As String
+
+    Dim sXML As String
+    Dim i%
+    
+    If oOrders.Count > 0 Then
+
+        sXML = "<set_printed_invoices>"
+
+        For i = 1 To oOrders.Count
+        
+            sXML = sXML & "<invoice id=""" & CStr(oOrders.Item(i).ID) & """ number=""" & CStr(oOrders.Item(i).Numero) & """ />"
+       
+        Next i
+    
+        sXML = sXML & "</set_printed_invoices>"
+    
+    End If
+  
+  
+    GetPrintedOrdersXML = sXML
+
+End Function
+
+
 Private Sub Class_Terminate()
     Set oOrders = Nothing
 '    Set oAPI = Nothing
 End Sub
-

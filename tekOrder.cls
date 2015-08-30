@@ -16,12 +16,13 @@ Option Explicit
 Private lID As Long
 Private sTipoCpte As String
 Private iEmisor As Integer
-Private iNumero As Integer
+Private iNumero As Long
 Private sFecha As String
 Private sRazonSocial As String
 Private sDireccion As String
 Private sCondIVA As String
 Private sCUIT As String
+Private sCpteRel As String
 Private dPagoEfectivo As Double
 Private bEmitida As Boolean
 
@@ -54,11 +55,11 @@ Public Property Let Emisor(ByVal NewValue As Integer)
    iEmisor = NewValue
 End Property
 
-Public Property Get Numero() As Integer
+Public Property Get Numero() As Long
    Numero = iNumero
 End Property
 
-Public Property Let Numero(ByVal NewValue As Integer)
+Public Property Let Numero(ByVal NewValue As Long)
    iNumero = NewValue
 End Property
 
@@ -101,6 +102,15 @@ End Property
 Public Property Let CUIT(ByVal NewValue As String)
    sCUIT = NewValue
 End Property
+
+Public Property Get CpteRel() As String
+   CpteRel = sCpteRel
+End Property
+
+Public Property Let CpteRel(ByVal NewValue As String)
+   sCpteRel = NewValue
+End Property
+
 
 Public Property Get PagoEfectivo() As Double
    PagoEfectivo = dPagoEfectivo

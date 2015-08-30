@@ -16,7 +16,7 @@ Option Explicit
 'local variable to hold collection
 Private mCol As Collection
 
-Public Function Add(ID As Long, TipoCpte As String, Emisor As Integer, Numero As Integer, RazonSocial As String, CUIT As String, Direccion As String, Fecha As String, CondIVA As String, PagoEfectivo As Double, Emitida As Boolean) As tekOrder
+Public Function Add(ID As Long, TipoCpte As String, Emisor As Integer, Numero As Long, RazonSocial As String, CUIT As String, CpteRel As String, Direccion As String, Fecha As String, CondIVA As String, PagoEfectivo As Double, Emitida As Boolean) As tekOrder
     'create a new object
     Dim objNewMember As tekOrder
     Set objNewMember = New tekOrder
@@ -31,6 +31,7 @@ Public Function Add(ID As Long, TipoCpte As String, Emisor As Integer, Numero As
     objNewMember.Direccion = Direccion
     objNewMember.CondIVA = CondIVA
     objNewMember.CUIT = CUIT
+    objNewMember.CpteRel = CpteRel
     objNewMember.PagoEfectivo = PagoEfectivo
     objNewMember.Emitida = Emitida
 
