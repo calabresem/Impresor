@@ -7,13 +7,13 @@ Begin VB.Form frmMain
    ClientHeight    =   2115
    ClientLeft      =   2985
    ClientTop       =   3360
-   ClientWidth     =   4830
+   ClientWidth     =   4605
    Icon            =   "frmMain.frx":0000
    LinkTopic       =   "Form1"
    MaxButton       =   0   'False
    MinButton       =   0   'False
    ScaleHeight     =   2115
-   ScaleWidth      =   4830
+   ScaleWidth      =   4605
    Begin MSWinsockLib.Winsock Winsock 
       Left            =   2760
       Top             =   2760
@@ -80,6 +80,9 @@ Begin VB.Form frmMain
       Begin VB.Menu mnuSysCancelAll 
          Caption         =   "Cancelar cptes. abiertos"
       End
+      Begin VB.Menu mnuSysReprint 
+         Caption         =   "Reimprimir el ultimo comprobante"
+      End
    End
    Begin VB.Menu mnuMinimize 
       Caption         =   "Minimizar"
@@ -136,7 +139,8 @@ Private Function ImprimirTickets(ByRef oTekBiz As clsTekBiz)
 
 Dim x As Integer, Y As Integer
 Dim sComando As String, sRazonSocial As String, sDomicilio As String, sCUIT As String
-Dim iTipoDoc As TiposDeDocumento
+Dim TipoDoc As TiposDeDocumento
+Dim CondImp As TiposDeResponsabilidades
 Dim sEmisorFMT As String, sNumeroFMT As String
 Dim cTotDesc As Double
       
@@ -236,32 +240,24 @@ Procesar:
             Case Ticket
             Case FacturaB
 
-                'sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
-                sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
-                If Len(sRazonSocial) = 0 Then
+                ' Es consumidor final, salvo que sea EXENTO
+                If oTekBiz.Orders.Item(x).CondIVA = "E" Then
+                    sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
+                    CondImp = RESPONSABLE_EXENTO
+                    sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
+                    TipoDoc = TIPO_CUIT
+                    
+                Else
                     sRazonSocial = "CONSUMIDOR FINAL"
-                End If
-                
-                sRazonSocial = Left(sRazonSocial, 40)
-                'sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
-                'sDomicilio = oTekBiz.Orders.Item(x).Direccion
-                ' le sacamos los guiones al CUIT
-                sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
-                iTipoDoc = TIPO_CUIT
-                
-                If sCUIT = "" Or (sCUIT <> "" And Len(sCUIT) <> 11) Then
+                    CondImp = CONSUMIDOR_FINAL
                     sCUIT = "00000000"
-                    iTipoDoc = TIPO_DNI
+                    TipoDoc = TIPO_DNI
+                    
                 End If
                 
-                ' completamos con espacios
-                'sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
-                'sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
-                'sDomicilio = String((40 - Len("")), " ")
 
-
-               If bDevMode = False Then
-                    HASAR1.DatosCliente sRazonSocial, sCUIT, iTipoDoc, CONSUMIDOR_FINAL, "."
+                If bDevMode = False Then
+                    HASAR1.DatosCliente sRazonSocial, sCUIT, TipoDoc, CondImp, "."
                     HASAR1.AbrirComprobanteFiscal TICKET_FACTURA_B
                 Else
                     Debug.Print "Abre comprobante: TICKET FACTURA B"
@@ -315,18 +311,17 @@ Procesar:
                 If bDevMode = False Then
     
                     '// ----------------------------------------------
+                    ' Prepara los datos de cabecera
                     sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
                     sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
                     sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
                     sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
                     sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
                     
-                    'HASAR1.InformacionRemito(1) = "0000-00000000"
-                    'HASAR1.DatosCliente sRazonSocial, sCUIT, TIPO_CUIT, RESPONSABLE_INSCRIPTO, "."
-                    'HASAR1.AbrirDNFH NOTA_CREDITO_A
-    
-                    'HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    ' Informa el comprobante relacionado
                     HASAR1.Enviar Chr$(147) & FS & "1" & FS & oTekBiz.Orders.Item(x).CpteRel
+                    
+                    ' Informa la cabecera
                     comando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & "I" & FS & "C" & _
                               FS & "."
                     HASAR1.Enviar comando
@@ -380,35 +375,32 @@ Procesar:
             Case NotaCB
 
                 If bDevMode = False Then
+                
+                    Dim sCondImp As String, sTipoDoc As String
 
-                    'sRazonSocial = Left(oTekBiz.Orders.Item(x).RazonSocial, 30)
-                    sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
-                    If Len(sRazonSocial) = 0 Then
+
+                    ' Es consumidor final, salvo que sea EXENTO
+                    If oTekBiz.Orders.Item(x).CondIVA = "E" Then
+                        sRazonSocial = oTekBiz.Orders.Item(x).RazonSocial
+                        CondImp = RESPONSABLE_EXENTO
+                        sCondImp = "E"
+                        sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
+                        TipoDoc = TIPO_CUIT
+                        sTipoDoc = "C"
+                        
+                    Else
                         sRazonSocial = "CONSUMIDOR FINAL"
+                        CondImp = CONSUMIDOR_FINAL
+                        sCondImp = "C"
+                        sCUIT = "9999"
+                        sTipoDoc = "2"
+                        
                     End If
-                    
-                    'sDomicilio = Left(oTekBiz.Orders.Item(x).Direccion, 40)
-                    sDomicilio = oTekBiz.Orders.Item(x).Direccion
-                    ' le sacamos los guiones al CUIT
-                    sCUIT = Replace(oTekBiz.Orders.Item(x).CUIT, "-", "")
-                    If sCUIT = "" Or Len(sCUIT) <> 11 Then
-                        sCUIT = "99999999995"
-                    End If
-                    
-                    ' completamos con espacios
-                    sRazonSocial = sRazonSocial & String((30 - Len(sRazonSocial)), " ")
-                    'sDomicilio = sDomicilio & String((40 - Len(sDomicilio)), " ")
-                    sDomicilio = String((40 - Len("")), " ")
 
-
-                    ' Metodos no soportados por el 715F
-                    'HASAR1.InformacionRemito(1) = "0000-00000000"
-                    'HASAR1.DatosCliente "CONSUMIDOR FINAL", "99999999995", TIPO_CUIT, CONSUMIDOR_FINAL, "."
-                    'HASAR1.AbrirDNFH NOTA_CREDITO_B
                     
-                    'HASAR1.Enviar Chr$(147) & FS & "1" & FS & "0000-0000000"
+                    ' Informa la cabecera
                     HASAR1.Enviar Chr$(147) & FS & "1" & FS & oTekBiz.Orders.Item(x).CpteRel
-                    comando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & "C" & FS & "2" & _
+                    comando = Chr$(98) & FS & sRazonSocial & FS & sCUIT & FS & sCondImp & FS & sTipoDoc & _
                               FS & "."
                     HASAR1.Enviar comando
                     HASAR1.Enviar Chr$(128) & FS & "S" & FS & "T"
@@ -966,6 +958,10 @@ Private Function GenerateDutyNumber() As String
 
 End Function
 
+
+Private Sub mnuSysReprint_Click()
+    HASAR1.ReimprimirComprobante
+End Sub
 
 Private Sub Winsock_Close()
     
