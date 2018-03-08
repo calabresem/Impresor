@@ -1,8 +1,8 @@
-frmMain = 74, 16, 615, 513, , 22, 22, 563, 519, C
+frmMain = 74, 16, 615, 513, Z, 22, 22, 563, 519, C
 tekOrder = 44, 44, 585, 541, C
 tekOrderItem = 66, 66, 607, 563, 
 tekOrders = 110, 110, 651, 607, 
-clsTekBiz = 154, 154, 695, 651, 
+clsTekBiz = 154, 154, 695, 651, C
 modTekBiz = 0, 0, 541, 497, 
 tekOrderItems = 176, 176, 849, 529, 
 mdlTray = 198, 198, 738, 695, C

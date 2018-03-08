@@ -4,7 +4,7 @@ Object = "{39ABE45D-F077-4D34-A361-6906C77D67F7}#1.0#0"; "Fiscal150423.Ocx"
 Begin VB.Form frmMain 
    BorderStyle     =   1  'Fixed Single
    Caption         =   "Facturador"
-   ClientHeight    =   2115
+   ClientHeight    =   2055
    ClientLeft      =   2985
    ClientTop       =   3360
    ClientWidth     =   4605
@@ -12,7 +12,7 @@ Begin VB.Form frmMain
    LinkTopic       =   "Form1"
    MaxButton       =   0   'False
    MinButton       =   0   'False
-   ScaleHeight     =   2115
+   ScaleHeight     =   2055
    ScaleWidth      =   4605
    Begin MSWinsockLib.Winsock Winsock 
       Left            =   2760
@@ -101,6 +101,18 @@ Attribute VB_Exposed = False
 Private oTekBiz As clsTekBiz
 Private bPrinting As Boolean
 Public FS As String
+
+'Separates actual packets (stands for 'End of Packet').
+Private Const EOP As String = "???"
+Private strBuffer As String 'Data buffer.
+
+Private Function NumeroInventado() As Long
+
+    Randomize
+    NumeroInventado = Int((99999 * Rnd()) + 999)
+
+End Function
+
 
 
 Private Sub Form_Load()
@@ -231,6 +243,7 @@ Procesar:
 
                 Else
                     Debug.Print "Pago:  " & CStr(oTekBiz.Orders.Item(x).PagoEfectivo)
+                    oTekBiz.Orders.Item(x).Numero = NumeroInventado()
                     
                 End If
                 
@@ -301,6 +314,8 @@ Procesar:
 
                 Else
                     Debug.Print "Imprime el pago y cierre"
+                    oTekBiz.Orders.Item(x).Numero = NumeroInventado()
+                    
                 End If
 
 
@@ -367,6 +382,8 @@ Procesar:
                     
                 Else
                     Debug.Print "Imprime pago y cierra."
+                    oTekBiz.Orders.Item(x).Numero = NumeroInventado()
+                    
                 End If
 
 
@@ -444,6 +461,7 @@ Procesar:
 
                 Else
                     Debug.Print "Imprime detalle."
+                    oTekBiz.Orders.Item(x).Numero = NumeroInventado()
                 End If
                 
                 
@@ -979,40 +997,123 @@ Private Sub Winsock_ConnectionRequest(ByVal requestID As Long)
 
 End Sub
 
+'Private Sub Winsock_DataArrival(ByVal bytesTotal As Long)
+'    Dim sData As String
+'    Dim sResponse As String
+'
+'    Winsock.GetData sData
+'    DoEvents
+'
+'    ' Imprime comprobantes
+'    If Winsock.State = sckConnected Then
+'        If bDevMode = True Then
+'            Debug.Print sData
+'        End If
+'
+'        ' imprime
+'        sResponse = manageOrders(sData)
+'
+'    End If
+'
+'    ' Envia respuesta
+'    If Winsock.State = sckConnected Then
+'        If Len(sResponse) = 0 Then
+'            MsgBox "Error"
+'            Winsock.SendData "ERROR"
+'        Else
+'            Winsock.SendData sResponse
+'        End If
+'    End If
+'
+'
+'    DoEvents
+'
+'    Winsock_Close
+'
+'End Sub
+
+'
 Private Sub Winsock_DataArrival(ByVal bytesTotal As Long)
-    Dim sData As String
+
+    Dim strData As String, strLastPiece As String
+    Dim lonEOP As Long, bolTruncated As Boolean
+    Dim strPackets() As String, lonLoop As Long
+    Dim lonUB As Long
     Dim sResponse As String
-
-    Winsock.GetData sData
-    DoEvents
     
-    ' Imprime comprobantes
-    If Winsock.State = sckConnected Then
-        If bDevMode = True Then
-            Debug.Print sData
-        End If
-
-        ' imprime
-        sResponse = manageOrders(sData)
-
+    'Get received data and put it into strData.
+    Winsock.GetData strData, vbString, bytesTotal
+    
+    'Append it to end of buffer.
+    strBuffer = strBuffer & strData
+    
+    'Erase string we just used.
+    strData = vbNullString
+    
+    'See if there is a truncated packet.
+    If Not Right$(strBuffer, 3) = EOP Then
+        bolTruncated = True
+        'Last packet received is incomplete and got cut off.
+        'Remove this last piece and store it away for now.
+        'Once we process the complete packets, we will put this back into the buffer
+        'to be processed next time.
+        
+        'First, find last occurence of EOP.
+        lonEOP = InStrRev(strBuffer, EOP)
+        
+        'If not found, then we haven't even received one full packet yet
+        'so just exit.
+        If lonEOP = 0 Then Exit Sub
+        
+        strLastPiece = Mid$(strBuffer, lonEOP + 2)
     End If
     
-    ' Envia respuesta
-    If Winsock.State = sckConnected Then
-        If Len(sResponse) = 0 Then
-            MsgBox "Error"
-            Winsock.SendData "ERROR"
-        Else
-            Winsock.SendData sResponse
+    'Done with that, now split up the data into individual packets.
+    strPackets() = Split(strBuffer, EOP)
+    lonUB = UBound(strPackets()) 'Number of items in array (# of packets).
+    
+    'Start looping through all packets.
+    For lonLoop = 0 To lonUB
+        If Len(strPackets(lonLoop)) > 3 Then 'A command is 3 bytes long.
+            If bolTruncated And lonLoop = lonUB Then
+                'This is the truncated one, do what you want with it here.
+                'strPackets(lonLoop).
+            Else
+            
+                'Mandar a imprimir
+                sResponse = manageOrders(strPackets(lonLoop))
+                
+                ' Envia respuesta
+                If Winsock.State = sckConnected Then
+                    If Len(sResponse) = 0 Then
+                        MsgBox "Error"
+                        Winsock.SendData "ERROR"
+                    Else
+                        Winsock.SendData sResponse
+                    End If
+                End If
+                
+                DoEvents
+                
+                strBuffer = vbNullString
+                
+            
+                Winsock_Close
+
+            End If
         End If
+    Next lonLoop
+    
+    'Clean up.
+    Erase strPackets()
+    
+    If bolTruncated Then
+        strBuffer = strLastPiece
     End If
     
-    
-    DoEvents
-    
-    Winsock_Close
-
 End Sub
+
+
 
 Public Sub MuestraEstado(ByVal texto As String)
 
